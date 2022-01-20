@@ -1,0 +1,105 @@
+.react-trello-board {
+    background-color: #fff !important;
+    height: 80vh !important;
+}
+
+.react-trello-card {
+    max-width: 230px !important;
+
+    @media only screen and (max-width: $mobile_width) {
+        max-width: 220px;
+    }
+
+    @media only screen and (max-width: $tablet_landscape_width) {
+        max-width: 230px !important;
+    }
+}
+
+.sc-jrQzAO {
+    padding: 10px;
+}
+
+.eaLrpa {
+    padding: 0 0 10px 0;
+}
+
+section.react-trello-lane {
+    & > header.sc-gKclnd {
+        background: linear-gradient(to right, #007DA5, rgba(0, 125, 165, 0.5));
+        padding: 10px 10px 5px 10px;
+    
+        textarea, a.sc-bdvvtL {
+            color: #fff;
+
+            &:focus {
+                color: #000;
+            }
+        }
+    }
+}
+
+
+
+.cFQZim {
+    top: 13px;
+}
+
+.sc-bYoBSM:hover {
+    background-color: #007DA5 !important;
+}
+
+.sc-hGPBjI, .sc-jcFjpl {
+    background-color: #007DA5 !important;
+}
+
+.sc-bBHxTw:focus {
+    color: #000;
+}
+
+.comPlainTextContentEditable {
+    word-break: break-all;
+    overflow: hidden;
+    overflow-wrap: break-word;
+}
+
+.sc-jrQzAO {
+    max-height: 70vh !important;
+}
+
+.error {
+    font-size: 1.3rem;
+    color: red;
+    text-align: left;
+}
+
+form.auth-form {
+    textarea {
+        outline: none;
+        border: 1px solid #007DA5;
+        padding: 5px;
+        border-radius: 5px;
+    }
+}
+
+.cursor {
+    cursor: pointer;
+}
+
+.go-back {
+    color: #000;
+    text-decoration: underline;
+    font-size: 20px;
+    cursor: pointer;
+
+    &:hover {
+        color: #000;
+    }
+}
+
+.react-trello-card{
+    .sc-bBHxTw {
+        pointer-events: none;
+    }
+}
+
+

@@ -1,0 +1,46 @@
+section {
+    &.page_manager {
+        .mapName_input {
+            font-size: 4.8rem;
+            font-weight: 500;
+            font-family: "Axiforma", sans-serif;
+            border: none;
+            text-align: center;
+            color: #000;
+            margin: 0.67em 0;
+            width: 100%;
+            font-weight: $bold;
+
+            &:focus, &:focus-visible {
+                border-color: #238A91;
+                outline: #238A91;
+            }
+        }
+    }
+
+    &.process-bg {
+        margin-bottom: 20px;
+        @media only screen and (max-width: $mobile_width) {
+           margin-bottom: 50px;
+        }
+
+        .thead {
+            background-color: #024157;
+            color: #fff;
+            margin-bottom: 0;
+            padding: 4px 0;
+        }
+
+        .bg-green {
+            background-color: #A9CFD5;
+            color: #000;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 3px;
+            outline: none;
+            border: none;
+        }
+    }
+}

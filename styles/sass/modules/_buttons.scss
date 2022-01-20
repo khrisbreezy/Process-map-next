@@ -1,0 +1,30 @@
+.btn {
+    background-color: #DE9A64;
+    color: #fff;
+    font-size: 15px;
+
+    &:hover, &:focus, &:active, &:focus-visible {
+        color: #fff;
+        outline: none;
+        box-shadow: none;
+    }
+}
+
+.btn-login {
+    background-color: #007DA5;
+    outline: none;
+    font-size: 18px;
+}
+
+button.sc-cCcXHH, button.sc-cidDSM  {
+    background-color: #DE9A64;
+    color: #fff;
+    font-size: 15px;
+    border: none;
+
+    &:hover, &:focus, &:active, &:focus-visible {
+        color: #fff;
+        outline: none;
+        box-shadow: none;
+    }
+}
