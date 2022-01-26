@@ -6,9 +6,21 @@ import Router from 'next/router';
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import { saveAs } from "file-saver";
+import {FilePond, registerPlugin} from 'react-filepond';
+import {NotificationManager} from 'react-notifications';
 
 import { convertObjectToArray } from '../../helpers/convertObjectArray';
 import { saveProcessData } from '../../store/actions/phaseStore';
+
+import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation'
+import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
+import FilePondPluginImageCrop from "filepond-plugin-image-crop";
+import FilePondPluginFileValidateType from 'filepond-plugin-file-validate-type';
+import FilePondPluginFileValidateSize from 'filepond-plugin-file-validate-size';
+import axiosInstance from '../../config/axios';
+
+
+registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview, FilePondPluginImageCrop, FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
 let PizZipUtils = null;
 if (typeof window !== "undefined") {
@@ -33,6 +45,12 @@ const ProcessBackgroundInformation = () => {
     const [exportData, setExportData] = useState(true);
     const [ csvData, setCsvData ] = useState([]);
     const [sopData, setSopData] = useState(null);
+    const [generatedFile, setGeneratedFile] = useState(null);
+    const [generatedUrl, setGeneratedUrl] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
+    console.log({generatedUrl});
+    console.log({sopData});
 
     const theProcessData = useSelector(state => state.phaseData.processInfo);
     const thePhaseData = useSelector(state => state.phaseData.phases);
@@ -74,7 +92,7 @@ const ProcessBackgroundInformation = () => {
     // Function to Generate SOP data into Word Document
     const generateDocument = (phase) => {
         loadFile(
-            "/lib/SOP-template.docx",
+            generatedUrl ? generatedUrl : `/lib/SOP-template.docx`,
             function (error, content) {
                 if (error) {
                     throw error;
@@ -95,6 +113,9 @@ const ProcessBackgroundInformation = () => {
                     // Output the document using Data-URI
                     saveAs(out, "Generated-SOP.docx");
                     setSopData(null);
+                    setGeneratedUrl(null);
+                    setGeneratedFile(null);
+                    
                 }
             }
         );
@@ -130,6 +151,7 @@ const ProcessBackgroundInformation = () => {
     // Function to save process background information
     const saveprocessBackgroundInfo = async (data) => {
         // If exporting data is set to false upon initiating go back, store data to store
+        data['appendices'] = ''
         if (!exportData) {
             await setSopData(data);
             await dispatch(saveProcessData(data));  
@@ -148,6 +170,10 @@ const ProcessBackgroundInformation = () => {
         }, 200);
     };
 
+    const showGenerateSOPModal = () => {
+        $('#uploadSOPModal').modal('show');
+    }
+
     // Function to to call the generateSOPHandler
     const getGeneratedProcessBgInfo = async () => {
         await setExportData(false);
@@ -161,19 +187,65 @@ const ProcessBackgroundInformation = () => {
     // Function to generate SOP Data and download
     const generateSOPHandler = async () => {
         let dataToExport = [];
-        await thePhaseData.forEach(phase => {
-            phase.cards.forEach(card => {
-                dataToExport.push({
-                    'phase': phase.title,
+        await thePhaseData.forEach((phase, i) => {
+            dataToExport.push({
+                'phase': phase.title,
+                'phase_id' : `${`${i+1}.${0}`}`,
+                'cards': phase.cards.map((card, index) => ({
                     'action': card.title,
                     'responsible': card.description,
                     'output': card.label ? card.label : '',
-                    'notes': card.metadata ? card.metadata : ''
-                });
+                    'notes': card.metadata ? card.metadata : '',
+                    'action_id': `${`${i+1}.${index+1}`}`
+                }))
             })
+            // phase.cards.forEach((card, index) => {
+            //     dataToExport.push({
+            //         'phase': phase.title,
+            //         'action': card.title,
+            //         'responsible': card.description,
+            //         'output': card.label ? card.label : '',
+            //         'notes': card.metadata ? card.metadata : '',
+            //         'phase_id' : `${`${i+1}.${i}`}`,
+            //         'action_id': `${`${i+1}.${index+1}`}`
+            //     });
+            // })
         });
+     
         generateDocument(dataToExport);
     };
+
+    const collectGeneratedFile = async (files) => {
+        const uploadedFiles = files.map(fileItem => fileItem.file);
+        if (uploadedFiles.length === 0) {
+            setGeneratedFile(null);
+            return;
+        } else {
+            setGeneratedFile(uploadedFiles);
+        }
+    };
+
+    const uploadFile = async () => {
+        setGeneratedUrl(null);
+        if (!generatedFile) {
+            return;
+        }
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('file', generatedFile[0]);
+        
+        try {
+            const { data : { data: data} } = await axiosInstance.post('upload', formData);
+            console.log({data});
+            setGeneratedUrl(data.url);
+            setUploading(false);
+            NotificationManager.success('Template uploaded', '', 5000);
+            // getGeneratedProcessBgInfo();
+        } catch (e) {
+            console.log(e);
+            setUploading(false);
+        }
+    }
 
     return (
         <>
@@ -259,10 +331,59 @@ const ProcessBackgroundInformation = () => {
                                     </div>
                                     <div className="d-flex align-items-center justify-content-between">
                                         <button ref={saveRef} type='submit' className="btn btn-green mt-4">Export to data frame</button>
-                                        <button onClick={getGeneratedProcessBgInfo} type={'button'} className="btn btn-green mt-4">{sopData ? 'Download' : 'Generate SOP'}</button>
+                                        <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate/Upload SOP</button>
                                     </div>
                                 </form>
                                 <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
+                            </div>
+                           
+                        </div>
+                    </div>
+                </div>
+                <div className="modal fade" id="uploadSOPModal" tabIndex="-1" role="dialog"
+                    aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                    <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+                        <div className="modal-content">
+
+                            <div className="modal-header">
+                                <button style={{ fontSize: '3rem' }} type="button" className="close" data-dismiss="modal"
+                                    aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+
+                            <div className="modal-body mb-5">
+                                <div className="container">
+                                    <div className="row">
+                                        <div className="col-md-12">
+                                            <div className="text-center">
+                                                <h2>Upload a new template</h2>
+                                                {/* <input type="file" onChange={collectGeneratedFile} /> */}
+                                                     <div className="col-12 text-center">
+                                                     <FilePond
+                                                            className="file-pond-upload"
+                                                            onupdatefiles={collectGeneratedFile}
+                                                            allowMultiple={false}
+                                                            files={generatedFile}
+                                                            maxFiles={1}
+                                                            name="files"
+                                                            maxFileSize={'20MB'}
+                                                            acceptedFileTypes={'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+                                                            labelIdle='Drag & Drop your file or <span class="filepond--label-action">Browse</span>'
+                                                        />
+                                                    </div>
+                                                <div className="text-center mb-3">
+                                                   <button onClick={uploadFile} className="btn">{uploading ? 'Uploading' : 'Upload'}</button>
+                                                </div>
+                                                <div className="text-center">
+                                                   <p className='mb-0 mx-3 mb-3'>Note: Upload a new template, generate and download the uploaded template or just generate and download from the current template.</p>
+                                                   <button onClick={getGeneratedProcessBgInfo} className="btn">{sopData ? 'Download' : 'Generate SOP'}</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>

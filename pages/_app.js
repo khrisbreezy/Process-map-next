@@ -15,6 +15,8 @@ import AuthModal from "../components/AuthModal";
 
 import '../styles/sass/main.scss';
 import 'react-notifications/lib/notifications.css';
+import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
+import 'filepond/dist/filepond.min.css'
 
 const persistConfig = {
     key: 'root',
