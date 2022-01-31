@@ -10,7 +10,7 @@ import {FilePond, registerPlugin} from 'react-filepond';
 import {NotificationManager} from 'react-notifications';
 
 import { convertObjectToArray } from '../../helpers/convertObjectArray';
-import { saveProcessData } from '../../store/actions/phaseStore';
+import { saveMapName, saveProcessData, savePhaseData } from '../../store/actions/phaseStore';
 
 import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation'
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
@@ -41,6 +41,7 @@ const ProcessBackgroundInformation = () => {
     // Use of Refs to target an element
     const btnRef = useRef();
     const saveRef = useRef();
+    const downloadRef = useRef();
 
     const [exportData, setExportData] = useState(true);
     const [ csvData, setCsvData ] = useState([]);
@@ -48,13 +49,17 @@ const ProcessBackgroundInformation = () => {
     const [generatedFile, setGeneratedFile] = useState(null);
     const [generatedUrl, setGeneratedUrl] = useState(null);
     const [uploading, setUploading] = useState(false);
-
-    console.log({generatedUrl});
-    console.log({sopData});
+    const [showDownload, setShowDownload] = useState(false);
+    const [docUrl, setDocUrl] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const theProcessData = useSelector(state => state.phaseData.processInfo);
     const thePhaseData = useSelector(state => state.phaseData.phases);
+    const mapName = useSelector(state => state.phaseData.mapName);
 
+    console.log({theProcessData});
+    console.log({sopData});
+    
     useEffect(() => {
         // Check if there is a process data stored upon page load and set to each textareaa respectively
         if (theProcessData && theProcessData.title) {
@@ -99,7 +104,7 @@ const ProcessBackgroundInformation = () => {
                 }
                 const zip = new PizZip(content);
                 const doc = new Docxtemplater().loadZip(zip);
-                // render the document (replace all occurences of {first_name} by John, {last_name} by Doe, ...)
+                // render the document (replace all occurences example {first_name} by John, {last_name} by Doe, ...)
                 if(sopData) {
                     doc.render({
                        ...sopData,
@@ -111,17 +116,21 @@ const ProcessBackgroundInformation = () => {
                             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     });
                     // Output the document using Data-URI
-                    saveAs(out, "Generated-SOP.docx");
+                    saveAs(out, `${mapName.split(' ').join('-')}.docx`);
                     setSopData(null);
                     setGeneratedUrl(null);
                     setGeneratedFile(null);
+                    dispatch(saveProcessData(null));
+                    dispatch(savePhaseData([]));
+                    dispatch(saveMapName('Map name'));
+                    reset({});
                     
                 }
             }
         );
     };    
 
-     // Headers for csv export
+    // Headers for csv export
     const headers = [
         {label: 'Information', key: 'information'},
         {label: 'Value', key: 'value'}
@@ -151,10 +160,10 @@ const ProcessBackgroundInformation = () => {
     // Function to save process background information
     const saveprocessBackgroundInfo = async (data) => {
         // If exporting data is set to false upon initiating go back, store data to store
-        data['appendices'] = ''
+        data['appendices'] = '';
+        await dispatch(saveProcessData(data));  
         if (!exportData) {
             await setSopData(data);
-            await dispatch(saveProcessData(data));  
             return;
         }
         // Else export data immediately
@@ -172,49 +181,74 @@ const ProcessBackgroundInformation = () => {
 
     const showGenerateSOPModal = () => {
         $('#uploadSOPModal').modal('show');
-    }
+    };
 
     // Function to to call the generateSOPHandler
     const getGeneratedProcessBgInfo = async () => {
         await setExportData(false);
-        await saveRef.current.click();
         setTimeout(async () => {
-           await generateSOPHandler();
-           setExportData(true);
-        }, 200);
-    }
-
+            await saveRef.current.click();
+        }, 600);
+        setTimeout(async () => {
+            if(sopData) {
+                await generateSOPHandler();
+                console.log('here');
+            } else {
+                console.log('no');
+            }
+           setExportData(true);   
+        }, 1000);
+    };
+  
     // Function to generate SOP Data and download
-    const generateSOPHandler = async () => {
+    const generateSOPHandler = async (sop) => {
+        if (thePhaseData.length === 0) {
+            NotificationManager.error(`Sorry, you can't generate without adding any phase`, '', 3000);
+            return;
+        }
+        setLoading(true);
+        setShowDownload(false);
+
         let dataToExport = [];
-        await thePhaseData.forEach((phase, i) => {
-            dataToExport.push({
-                'phase': phase.title,
-                'phase_id' : `${`${i+1}.${0}`}`,
-                'cards': phase.cards.map((card, index) => ({
+        await thePhaseData.forEach(phase => {
+            phase.cards.forEach(card => {
+                dataToExport.push({
+                    'phase': phase.title,
                     'action': card.title,
                     'responsible': card.description,
                     'output': card.label ? card.label : '',
-                    'notes': card.metadata ? card.metadata : '',
-                    'action_id': `${`${i+1}.${index+1}`}`
-                }))
+                    'notes': card.metadata ? card.metadata : ''
+                });
             })
-            // phase.cards.forEach((card, index) => {
-            //     dataToExport.push({
-            //         'phase': phase.title,
-            //         'action': card.title,
-            //         'responsible': card.description,
-            //         'output': card.label ? card.label : '',
-            //         'notes': card.metadata ? card.metadata : '',
-            //         'phase_id' : `${`${i+1}.${i}`}`,
-            //         'action_id': `${`${i+1}.${index+1}`}`
-            //     });
-            // })
         });
+       
+        const allData = {
+            ...sopData,
+            file: generatedUrl,
+            cards: dataToExport,
+            process_name: mapName
+        };
+
+        try {
+            const {data : {data}} = await axiosInstance.post('generate-document', allData);
+            NotificationManager.success('Template generated', '', 5000);
+            setShowDownload(true);
+            setDocUrl(data.url);
+            setTimeout(() => {
+                NotificationManager.success('Download the generated template', '', 5000);
+            }, 500);
+            setLoading(false);
+        } catch (e) {
+            console.log(e);
+            setLoading(false);
+            setShowDownload(false);
+            NotificationManager.error(e.response.data.message, '', 5000);
+        }
      
-        generateDocument(dataToExport);
+        // generateDocument(dataToExport);
     };
 
+    // Collect generated files and store
     const collectGeneratedFile = async (files) => {
         const uploadedFiles = files.map(fileItem => fileItem.file);
         if (uploadedFiles.length === 0) {
@@ -223,8 +257,10 @@ const ProcessBackgroundInformation = () => {
         } else {
             setGeneratedFile(uploadedFiles);
         }
+        setShowDownload(false);
     };
 
+    // Upload generated files and get back the url and store
     const uploadFile = async () => {
         setGeneratedUrl(null);
         if (!generatedFile) {
@@ -236,16 +272,30 @@ const ProcessBackgroundInformation = () => {
         
         try {
             const { data : { data: data} } = await axiosInstance.post('upload', formData);
-            console.log({data});
             setGeneratedUrl(data.url);
             setUploading(false);
             NotificationManager.success('Template uploaded', '', 5000);
-            // getGeneratedProcessBgInfo();
+            setTimeout(() => {
+                NotificationManager.success('Generate and download the uploaded template', '', 5000);
+            }, 500);
         } catch (e) {
             console.log(e);
             setUploading(false);
         }
-    }
+    };
+
+    const downloadGeneratedDoc = () => {  
+        downloadRef.current.click();
+        setShowDownload(false);
+        setGeneratedUrl(null);
+        setGeneratedFile(null);
+        dispatch(saveProcessData(null));
+        dispatch(savePhaseData([]));
+        dispatch(saveMapName('Map name'));
+        setDocUrl('');
+        $('#uploadSOPModal').modal('hide');
+        reset({});
+    };
 
     return (
         <>
@@ -331,7 +381,7 @@ const ProcessBackgroundInformation = () => {
                                     </div>
                                     <div className="d-flex align-items-center justify-content-between">
                                         <button ref={saveRef} type='submit' className="btn btn-green mt-4">Export to data frame</button>
-                                        <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate/Upload SOP</button>
+                                        <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate document</button>
                                     </div>
                                 </form>
                                 <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
@@ -377,7 +427,9 @@ const ProcessBackgroundInformation = () => {
                                                 </div>
                                                 <div className="text-center">
                                                    <p className='mb-0 mx-3 mb-3'>Note: Upload a new template, generate and download the uploaded template or just generate and download from the current template.</p>
-                                                   <button onClick={getGeneratedProcessBgInfo} className="btn">{sopData ? 'Download' : 'Generate SOP'}</button>
+                                                   {!showDownload && <button onClick={getGeneratedProcessBgInfo} className="btn">{loading ? 'Generating...' : sopData ? 'Generate Document' : 'Start Generating' }</button>}
+                                                   {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Download</button>}
+                                                <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
                                                 </div>
                                             </div>
                                         </div>
