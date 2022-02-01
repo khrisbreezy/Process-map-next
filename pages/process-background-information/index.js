@@ -56,9 +56,6 @@ const ProcessBackgroundInformation = () => {
     const theProcessData = useSelector(state => state.phaseData.processInfo);
     const thePhaseData = useSelector(state => state.phaseData.phases);
     const mapName = useSelector(state => state.phaseData.mapName);
-
-    console.log({theProcessData});
-    console.log({sopData});
     
     useEffect(() => {
         // Check if there is a process data stored upon page load and set to each textareaa respectively
@@ -192,9 +189,6 @@ const ProcessBackgroundInformation = () => {
         setTimeout(async () => {
             if(sopData) {
                 await generateSOPHandler();
-                console.log('here');
-            } else {
-                console.log('no');
             }
            setExportData(true);   
         }, 1000);

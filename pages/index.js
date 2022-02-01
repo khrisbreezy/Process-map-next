@@ -396,7 +396,7 @@ const Home = () => {
                                             <div className="text-center">
                                                 <p className='mb-0 mx-3 mb-3'>Note: Upload a new template, generate and download the uploaded template or just generate and download from the current template.</p>
                                                 {!showDownload && <button onClick={getGeneratedProcessBgInfo} className="btn">{loading ? 'Generating...' : 'Generate document'}</button>}
-                                                {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Donwload</button>}
+                                                {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Download</button>}
                                                 <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
                                             </div>
                                         </div>
