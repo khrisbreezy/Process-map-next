@@ -84,7 +84,7 @@ const Home = () => {
 
     // Csv export object
     const csvReport = {
-        filename: mapName.split(' ').join('-') + '.csv',
+        filename: mapName.split(' ').join('_') + '.csv',
         headers: headers,
         data: csvData
     };
@@ -133,8 +133,8 @@ const Home = () => {
 
         await setCsvData(dataToExport);
         btnRef.current.link.click();
-        setPhaseData([]);
-        dispatch(savePhaseData([]));
+        // setPhaseData([]);
+        // dispatch(savePhaseData([]));
     };
 
     // Function to reset current Action card after an update/change
@@ -262,8 +262,8 @@ const Home = () => {
         setGeneratedUrl(null);
         setGeneratedFile(null);
         dispatch(saveProcessData(null));
-        dispatch(savePhaseData([]));
-        setPhaseData([]);
+        // dispatch(savePhaseData([]));
+        // setPhaseData([]);
         dispatch(saveMapName('Map name'));
         setDocUrl('');
         $('#uploadSOPModal').modal('hide');

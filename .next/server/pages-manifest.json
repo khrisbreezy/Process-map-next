@@ -3,6 +3,5 @@
   "/_document": "pages/_document.js",
   "/_error": "pages/_error.js",
   "/": "pages/index.js",
-  "/process-background-information": "pages/process-background-information.js",
-  "/next/dist/pages/_error": "pages/next/dist/pages/_error.js"
+  "/process-background-information": "pages/process-background-information.js"
 }

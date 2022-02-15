@@ -88,7 +88,7 @@ const ProcessBackgroundInformation = () => {
 
     // CSV export object
     const csvReport = {
-        filename: 'process-background.csv',
+        filename: 'process_background.csv',
         headers: headers,
         data: csvData
     };
@@ -237,7 +237,7 @@ const ProcessBackgroundInformation = () => {
         setGeneratedUrl(null);
         setGeneratedFile(null);
         dispatch(saveProcessData(null));
-        dispatch(savePhaseData([]));
+        // dispatch(savePhaseData([]));
         dispatch(saveMapName('Map name'));
         setDocUrl('');
         $('#uploadSOPModal').modal('hide');
