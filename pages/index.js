@@ -4,9 +4,6 @@ import Board, { createTranslate } from 'react-trello';
 import Router from 'next/router';
 import { useSelector, useDispatch } from 'react-redux';
 import { CSVLink } from 'react-csv';
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
-import { saveAs } from "file-saver";
 import {FilePond, registerPlugin} from 'react-filepond';
 import {NotificationManager} from 'react-notifications';
 
@@ -21,30 +18,20 @@ import axiosInstance from '../config/axios';
 
 registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview, FilePondPluginImageCrop, FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
-
-let PizZipUtils = null;
-if (typeof window !== "undefined") {
-    import("pizzip/utils/index.js").then(function (r) {
-        PizZipUtils = r;
-    });
-}
-
-function loadFile(url, callback) {
-    PizZipUtils.getBinaryContent(url, callback);
-}
-
 const Home = () => {
 
     const dispatch = useDispatch();
 
-     // Use of Refs to target an element
+    // Use of Refs to target an element
     const btnRef = useRef();
     const downloadRef = useRef();
 
+    // Data from store
     const thePhaseData = useSelector(state => state.phaseData.phases);
     const mapName = useSelector(state => state.phaseData.mapName);
     const theProcessData = useSelector(state => state.phaseData.processInfo);
 
+    // All state management
     const [phaseData, setPhaseData] = useState(thePhaseData);
     const [csvData, setCsvData] = useState([]);
     const [currentCard, setCurrentCard] = useState(null);
@@ -53,7 +40,6 @@ const Home = () => {
     const [generatedFile, setGeneratedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [sopData, setSopData] = useState(null);
     const [generatedUrl, setGeneratedUrl] = useState(null);
     const [showDownload, setShowDownload] = useState(false);
     const [docUrl, setDocUrl] = useState('');
@@ -80,42 +66,6 @@ const Home = () => {
         }
     };
 
-
-    // Function to Generate SOP data into Word Document
-    const generateDocument = (phase) => {
-        loadFile(
-            generatedUrl ? generatedUrl : `/lib/SOP-template.docx`,
-            function (error, content) {
-                if (error) {
-                    throw error;
-                }
-                const zip = new PizZip(content);
-                const doc = new Docxtemplater().loadZip(zip);
-                // render the document (replace all occurences example {first_name} by John, {last_name} by Doe, ...)
-                if(sopData) {
-                    doc.render({
-                       ...sopData,
-                       phases: phase
-                    });
-                    const out = doc.getZip().generate({
-                        type: "blob",
-                        mimeType:
-                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    });
-                    // Output the document using Data-URI
-                    saveAs(out, `${mapName.split(' ').join('-')}.docx`);
-                    setSopData(null);
-                    setGeneratedUrl(null);
-                    setGeneratedFile(null);
-                    dispatch(saveProcessData(null));
-                    dispatch(savePhaseData([]));
-                    setPhaseData([]);
-                    dispatch(saveMapName('Map name')); 
-                }
-            }
-        );
-    };  
-
     // set export name
     const mapNameHandler = (e) => {
         dispatch(saveMapName(e.target.value));
@@ -127,7 +77,9 @@ const Home = () => {
         {label: 'Action', key: 'action'},
         {label: 'Responsible', key: 'responsible'},
         {label: 'Output', key: 'output'},
-        {label: 'Notes', key: 'notes'}
+        {label: 'Notes', key: 'notes'},
+        {label: 'Phase ID', key: 'phaseId'},
+        {label: 'Action ID', key: 'actionId'}
     ];
 
     // Csv export object
@@ -172,7 +124,9 @@ const Home = () => {
                     'action': card.title,
                     'responsible': card.description,
                     'output': card.label ? card.label : '',
-                    'notes': card.metadata ? card.metadata : ''
+                    'notes': card.metadata ? card.metadata : '',
+                    'actionId': card.id,
+                    'phaseId': phase.id
                 });
             })
         });
@@ -232,12 +186,13 @@ const Home = () => {
         }
     };
 
+    // Show generate modal popup
     const showGenerateSOPModal = () => {
         $('#uploadSOPModal').modal('show');
     };
 
-     // Function to to call the generateSOPHandler
-     const getGeneratedProcessBgInfo = async () => {
+    // Function to to call the generateSOPHandler
+    const getGeneratedProcessBgInfo = async () => {
         if (phaseData.length === 0) {
             NotificationManager.error(`Sorry, you can't generate without adding any phase`, '', 3000);
             return;
@@ -260,7 +215,6 @@ const Home = () => {
         } else {
             data = {...theProcessData}
         }
-        // setSopData(data);
 
         let dataToExport = [];
         await  phaseData.forEach(phase => {
@@ -301,6 +255,7 @@ const Home = () => {
         }
     };
 
+    // Function to download generated template and set all state and data back to normal
     const downloadGeneratedDoc = () => {  
         downloadRef.current.click();
         setShowDownload(false);
@@ -313,6 +268,11 @@ const Home = () => {
         setDocUrl('');
         $('#uploadSOPModal').modal('hide');
     };
+
+    const clearData = () => {
+        setPhaseData([]);
+        dispatch(savePhaseData([]));
+    };
   
 
     return (
@@ -321,6 +281,12 @@ const Home = () => {
                 <div className="row">
                     <div className="col-12 text-center d-flex align-items-center justify-content-center">
                         <input className='mapName_input mx-3' type="text" value={mapName} onChange={mapNameHandler} />
+                    </div>
+                </div>
+                
+                <div className="row">
+                    <div className="col">
+                        <button onClick={clearData} className='btn'>Clear Phases</button>
                     </div>
                 </div>
 
@@ -338,11 +304,11 @@ const Home = () => {
 
                 <div className="row text-center">
                     <div className="col-md-4 mb-4">
-                        <button onClick={gotoProcessBginfoHandler} className="btn">Add process background</button>
+                        <button onClick={gotoProcessBginfoHandler} className="btn">Add Process Background</button>
                     </div>
                     <div className="col-md-4 mb-4">
                         <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
-                        <button onClick={exportDataHandler} className="btn">Export to data frame</button>
+                        <button onClick={exportDataHandler} className="btn">Export to Data Frame</button>
                     </div>         
                     <div className="col-md-4 mb-4">
                         <button onClick={showGenerateSOPModal} className="btn">Generate Document</button>

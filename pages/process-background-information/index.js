@@ -3,9 +3,6 @@ import { useForm } from "react-hook-form";
 import { CSVLink } from 'react-csv';
 import { useSelector, useDispatch } from 'react-redux';
 import Router from 'next/router';
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
-import { saveAs } from "file-saver";
 import {FilePond, registerPlugin} from 'react-filepond';
 import {NotificationManager} from 'react-notifications';
 
@@ -22,17 +19,6 @@ import axiosInstance from '../../config/axios';
 
 registerPlugin(FilePondPluginImageExifOrientation, FilePondPluginImagePreview, FilePondPluginImageCrop, FilePondPluginFileValidateType, FilePondPluginFileValidateSize);
 
-let PizZipUtils = null;
-if (typeof window !== "undefined") {
-    import("pizzip/utils/index.js").then(function (r) {
-        PizZipUtils = r;
-    });
-}
-
-function loadFile(url, callback) {
-    PizZipUtils.getBinaryContent(url, callback);
-}
-
 const ProcessBackgroundInformation = () => {
     const {register, errors, handleSubmit, reset, setValue} = useForm();
 
@@ -43,6 +29,12 @@ const ProcessBackgroundInformation = () => {
     const saveRef = useRef();
     const downloadRef = useRef();
 
+    // Data from store
+    const theProcessData = useSelector(state => state.phaseData.processInfo);
+    const thePhaseData = useSelector(state => state.phaseData.phases);
+    const mapName = useSelector(state => state.phaseData.mapName);
+
+    // All state management
     const [exportData, setExportData] = useState(true);
     const [ csvData, setCsvData ] = useState([]);
     const [sopData, setSopData] = useState(null);
@@ -53,9 +45,6 @@ const ProcessBackgroundInformation = () => {
     const [docUrl, setDocUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const theProcessData = useSelector(state => state.phaseData.processInfo);
-    const thePhaseData = useSelector(state => state.phaseData.phases);
-    const mapName = useSelector(state => state.phaseData.mapName);
     
     useEffect(() => {
         // Check if there is a process data stored upon page load and set to each textareaa respectively
@@ -89,43 +78,7 @@ const ProcessBackgroundInformation = () => {
         if (theProcessData && theProcessData.definitions) {
             setValue('definitions', theProcessData.definitions);
         } 
-    }, [theProcessData]);
-
-    // Function to Generate SOP data into Word Document
-    const generateDocument = (phase) => {
-        loadFile(
-            generatedUrl ? generatedUrl : `/lib/SOP-template.docx`,
-            function (error, content) {
-                if (error) {
-                    throw error;
-                }
-                const zip = new PizZip(content);
-                const doc = new Docxtemplater().loadZip(zip);
-                // render the document (replace all occurences example {first_name} by John, {last_name} by Doe, ...)
-                if(sopData) {
-                    doc.render({
-                       ...sopData,
-                       phases: phase
-                    });
-                    const out = doc.getZip().generate({
-                        type: "blob",
-                        mimeType:
-                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    });
-                    // Output the document using Data-URI
-                    saveAs(out, `${mapName.split(' ').join('-')}.docx`);
-                    setSopData(null);
-                    setGeneratedUrl(null);
-                    setGeneratedFile(null);
-                    dispatch(saveProcessData(null));
-                    dispatch(savePhaseData([]));
-                    dispatch(saveMapName('Map name'));
-                    reset({});
-                    
-                }
-            }
-        );
-    };    
+    }, [theProcessData]);  
 
     // Headers for csv export
     const headers = [
@@ -176,6 +129,7 @@ const ProcessBackgroundInformation = () => {
         }, 200);
     };
 
+    // Show generate modal popup
     const showGenerateSOPModal = () => {
         $('#uploadSOPModal').modal('show');
     };
@@ -238,8 +192,6 @@ const ProcessBackgroundInformation = () => {
             setShowDownload(false);
             NotificationManager.error(e.response.data.message, '', 5000);
         }
-     
-        // generateDocument(dataToExport);
     };
 
     // Collect generated files and store
@@ -278,6 +230,7 @@ const ProcessBackgroundInformation = () => {
         }
     };
 
+    // Function to download generated template and set all state and data back to normal
     const downloadGeneratedDoc = () => {  
         downloadRef.current.click();
         setShowDownload(false);
@@ -374,8 +327,8 @@ const ProcessBackgroundInformation = () => {
                                         </div>
                                     </div>
                                     <div className="d-flex align-items-center justify-content-between">
-                                        <button ref={saveRef} type='submit' className="btn btn-green mt-4">Export to data frame</button>
-                                        <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate document</button>
+                                        <button ref={saveRef} type='submit' className="btn btn-green mt-4">Export to Data Frame</button>
+                                        <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate Document</button>
                                     </div>
                                 </form>
                                 <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
@@ -423,7 +376,7 @@ const ProcessBackgroundInformation = () => {
                                                    <p className='mb-0 mx-3 mb-3'>Note: Upload a new template, generate and download the uploaded template or just generate and download from the current template.</p>
                                                    {!showDownload && <button onClick={getGeneratedProcessBgInfo} className="btn">{loading ? 'Generating...' : sopData ? 'Generate Document' : 'Start Generating' }</button>}
                                                    {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Download</button>}
-                                                <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
+                                                    <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
                                                 </div>
                                             </div>
                                         </div>
