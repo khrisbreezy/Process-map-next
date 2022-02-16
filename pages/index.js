@@ -38,17 +38,57 @@ const Home = () => {
     const [currentPhase, setCurrentPhase] = useState([]);
     const [phaseIndex, setPhaseIndex] = useState(null);
     const [generatedFile, setGeneratedFile] = useState(null);
+    const [exportedDataFrame, setExportedDataFrame] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [loading, setLoading] = useState(false);
     const [generatedUrl, setGeneratedUrl] = useState(null);
     const [showDownload, setShowDownload] = useState(false);
     const [docUrl, setDocUrl] = useState('');
+
+    // console.log({phaseData});
 
     // All phases data object
     const data = {
         lanes: phaseData
     };
     
+    // [
+    //     {
+    //         cards: [{
+    //             description: "Responsible",
+    //             id: "424c56d0-8ea5-11ec-8ee7-4f791edb4eb4",
+    //             label: "aozibclQ",
+    //             laneId: "3abf8220-8ea5-11ec-8ee7-4f791edb4eb4",
+    //             metadata: "",
+    //             title: ""
+    //         }],
+    //         currentPage: 1,
+    //         id: "3abf8220-8ea5-11ec-8ee7-4f791edb4eb4",
+    //         title: "Yea"
+    //     },
+    //     {
+    //         cards: [
+    //             {
+    //                 description: "SIngle",
+    //                 id: "67884f90-8ea4-11ec-8ee7-4f791edb4eb4",
+    //                 label: "Test",
+    //                 laneId: "5d8f0ec0-8ea4-11ec-8ee7-4f791edb4eb4",
+    //                 metadata: "The notes",
+    //                 title: "Hi there"
+    //             },
+    //             {
+    //                 id: "2ac8e640-8ea5-11ec-8ee7-4f791edb4eb4",
+    //                 laneId: "5d8f0ec0-8ea4-11ec-8ee7-4f791edb4eb4",
+    //                 title: "Silly me"   
+    //             }
+    //         ],
+    //         currentPage: 1,
+    //         id: "5d8f0ec0-8ea4-11ec-8ee7-4f791edb4eb4",
+    //         title: "Test data"
+    //     }
+    // ]
+
     const TEXTS = {
         "Add another lane": "+ Add Phase",  
         "Click to add card": "Add actions",
@@ -114,6 +154,52 @@ const Home = () => {
         Router.push('/process-background-information');
     };
 
+
+    const exportToDataFrame = async () => {
+        if (phaseData.length === 0) {
+            return
+        }
+        setExporting(true);
+        let dataToExport = [];
+        phaseData.forEach(phase => {
+            dataToExport.push({
+                'title': phase.title,
+                'cards': phase.cards.map(card => {
+                    return {
+                        'action': card.title,
+                        'responsible': card.description,
+                        'output': card.label ? card.label : '',
+                        'notes': card.metadata ? card.metadata : ''
+                    }
+                })
+            })
+
+            // phase.cards.forEach(card => {
+                
+            //     dataToExport.push({
+            //         'title': phase.title,
+            //         'cards': card
+            //         'action': card.title,
+            //         'responsible': card.description,
+            //         'output': card.label ? card.label : '',
+            //         'notes': card.metadata ? card.metadata : ''
+            //     });
+            // })
+        });
+
+        try {
+            const {data} = await axiosInstance.post('processes', {
+                phase: dataToExport,
+                process_name: mapName
+            });
+            setExporting(false);
+            console.log({data});
+        } catch(e) {
+            console.log(e);
+            setExporting(false);
+        }
+    }
+
     // Export data function
     const exportDataHandler = async () => {
         let dataToExport = [];
@@ -149,7 +235,7 @@ const Home = () => {
         setPhaseData(data);
     };
 
-     // Collect generated files and store
+    // Collect generated files and store
     const collectGeneratedFile = async (files) => {
         const uploadedFiles = files.map(fileItem => fileItem.file);
         if (uploadedFiles.length === 0) {
@@ -159,6 +245,17 @@ const Home = () => {
             setGeneratedFile(uploadedFiles);
         }
         setShowDownload(false);
+    };
+
+    // Collect exported data frame file and store
+    const collectExportedDataFrame = async (files) => {
+        const uploadedFiles = files.map(fileItem => fileItem.file);
+        if (uploadedFiles.length === 0) {
+            setExportedDataFrame(null);
+            return;
+        } else {
+            setExportedDataFrame(uploadedFiles);
+        }
     };
 
 
@@ -186,9 +283,38 @@ const Home = () => {
         }
     };
 
+    // Upload eported data frame and get back the url and store
+    const uploadDataFrame = async () => {
+        if (!exportedDataFrame) {
+            return;
+        }
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('csv_file', exportedDataFrame[0]);
+        
+        try {
+            const { data : { data } } = await axiosInstance.post('upload-csv', formData);
+            console.log({data});
+            setPhaseData(data.phases);
+            dispatch(saveMapName(data.process_name));
+            setExportedDataFrame(null);
+            $('#uploadCSVData').modal('hide');
+            setUploading(false);
+            NotificationManager.success('Process retrieved', '', 5000);
+        } catch (e) {
+            console.log(e);
+            setUploading(false);
+        }
+    };
+
     // Show generate modal popup
     const showGenerateSOPModal = () => {
         $('#uploadSOPModal').modal('show');
+    };
+
+    // Show generate modal popup
+    const showExportedDataFrameModal = () => {
+        $('#uploadCSVData').modal('show');
     };
 
     // Function to to call the generateSOPHandler
@@ -303,16 +429,20 @@ const Home = () => {
                 </div>
 
                 <div className="row text-center">
-                    <div className="col-md-4 mb-4">
+                    <div className="col-md-3 mb-4">
                         <button onClick={gotoProcessBginfoHandler} className="btn">Add Process Background</button>
                     </div>
-                    <div className="col-md-4 mb-4">
+                    <div className="col-md-3 mb-4">
                         <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
-                        <button onClick={exportDataHandler} className="btn">Export to Data Frame</button>
+                        <button onClick={exportDataHandler} className="btn">{exporting ? 'Exporting' : 'Export to Data Frame'}</button>
                     </div>         
-                    <div className="col-md-4 mb-4">
+                    <div className="col-md-3 mb-4">
                         <button onClick={showGenerateSOPModal} className="btn">Generate Document</button>
-                    </div>         
+                    </div>  
+
+                     <div className="col-md-3 mb-4">
+                        <button onClick={showExportedDataFrameModal} className="btn">Upload Exported data frame</button>
+                    </div>        
                 </div>
             </div>
             {/* Single Action Modal and its properties */}
@@ -364,6 +494,50 @@ const Home = () => {
                                                 {!showDownload && <button onClick={getGeneratedProcessBgInfo} className="btn">{loading ? 'Generating...' : 'Generate document'}</button>}
                                                 {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Download</button>}
                                                 <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="modal fade" id="uploadCSVData" tabIndex="-1" role="dialog"
+                aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+                    <div className="modal-content">
+
+                        <div className="modal-header">
+                            <button style={{ fontSize: '3rem' }} type="button" className="close" data-dismiss="modal"
+                                aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div className="modal-body mb-5">
+                            <div className="container">
+                                <div className="row">
+                                    <div className="col-md-12">
+                                        <div className="text-center">
+                                            <h2>Upload exported data frame</h2>
+                                                    <div className="col-12 text-center">
+                                                    <FilePond
+                                                        className="file-pond-upload"
+                                                        onupdatefiles={collectExportedDataFrame}
+                                                        allowMultiple={false}
+                                                        files={exportedDataFrame}
+                                                        maxFiles={1}
+                                                        name="files"
+                                                        maxFileSize={'20MB'}
+                                                        acceptedFileTypes={'application/csv, text/csv, .csv'}
+                                                        labelIdle='Drag & Drop your file or <span class="filepond--label-action">Browse</span>'
+                                                    />
+                                                </div>
+                                            <div className="text-center mb-3">
+                                                <button onClick={uploadDataFrame} className="btn">{uploading ? 'Uploading...' : 'Upload'}</button>
                                             </div>
                                         </div>
                                     </div>
