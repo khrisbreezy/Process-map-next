@@ -44,6 +44,7 @@ const ProcessBackgroundInformation = () => {
     const [showDownload, setShowDownload] = useState(false);
     const [docUrl, setDocUrl] = useState('');
     const [loading, setLoading] = useState(false);
+    const [exportedDataFrame, setExportedDataFrame] = useState(null);
 
     
     useEffect(() => {
@@ -244,6 +245,45 @@ const ProcessBackgroundInformation = () => {
         reset({});
     };
 
+       // Collect exported data frame file and store
+    const collectExportedDataFrame = async (files) => {
+        const uploadedFiles = files.map(fileItem => fileItem.file);
+        if (uploadedFiles.length === 0) {
+            setExportedDataFrame(null);
+            return;
+        } else {
+            setExportedDataFrame(uploadedFiles);
+        }
+    };
+
+        // Upload eported data frame and get back the url and store
+    const uploadDataFrame = async () => {
+        if (!exportedDataFrame) {
+            return;
+        }
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('csv_file', exportedDataFrame[0]);
+        
+        try {
+            const { data : { data } } = await axiosInstance.post('process-background/upload-csv ', formData);
+            dispatch(saveProcessData(data));  
+            $('#uploadCSVProcssData').modal('hide');
+            setUploading(false);
+            setExportedDataFrame(null);
+            NotificationManager.success('Process retrieved', '', 5000);
+        } catch (e) {
+            console.log(e);
+            setUploading(false);
+        }
+    };
+
+        // Show generate modal popup
+    const showExportedDataFrameModal = (e) => {
+        e.preventDefault();
+        $('#uploadCSVProcssData').modal('show');
+    };
+
     return (
         <>
             <section className='process-bg'>
@@ -329,6 +369,7 @@ const ProcessBackgroundInformation = () => {
                                     <div className="d-flex align-items-center justify-content-between">
                                         <button ref={saveRef} type='submit' className="btn btn-green mt-4">Export to Data Frame</button>
                                         <button onClick={showGenerateSOPModal} type={'button'} className="btn btn-green mt-4">Generate Document</button>
+                                        <button onClick={showExportedDataFrameModal} className="btn mt-4">Upload Exported Data Frame</button>
                                     </div>
                                 </form>
                                 <CSVLink className='d-none' ref={btnRef} {...csvReport}>Export</CSVLink>
@@ -377,6 +418,50 @@ const ProcessBackgroundInformation = () => {
                                                    {!showDownload && <button onClick={getGeneratedProcessBgInfo} className="btn">{loading ? 'Generating...' : sopData ? 'Generate Document' : 'Start Generating' }</button>}
                                                    {showDownload && <button onClick={downloadGeneratedDoc} className="btn">Download</button>}
                                                     <a className='d-none' ref={downloadRef} href={docUrl} download={`${mapName.split(' ').join('-')}`}></a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="modal fade" id="uploadCSVProcssData" tabIndex="-1" role="dialog"
+                    aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+                    <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+                        <div className="modal-content">
+
+                            <div className="modal-header">
+                                <button style={{ fontSize: '3rem' }} type="button" className="close" data-dismiss="modal"
+                                    aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+
+                            <div className="modal-body mb-5">
+                                <div className="container">
+                                    <div className="row">
+                                        <div className="col-md-12">
+                                            <div className="text-center">
+                                                <h2>Upload exported data frame</h2>
+                                                        <div className="col-12 text-center">
+                                                        <FilePond
+                                                            className="file-pond-upload"
+                                                            onupdatefiles={collectExportedDataFrame}
+                                                            allowMultiple={false}
+                                                            files={exportedDataFrame}
+                                                            maxFiles={1}
+                                                            name="files"
+                                                            maxFileSize={'20MB'}
+                                                            acceptedFileTypes={'application/csv, text/csv, .csv'}
+                                                            labelIdle='Drag & Drop your file or <span class="filepond--label-action">Browse</span>'
+                                                        />
+                                                    </div>
+                                                <div className="text-center mb-3">
+                                                    <button onClick={uploadDataFrame} className="btn">{uploading ? 'Uploading...' : 'Upload'}</button>
                                                 </div>
                                             </div>
                                         </div>

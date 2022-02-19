@@ -294,7 +294,6 @@ const Home = () => {
         
         try {
             const { data : { data } } = await axiosInstance.post('upload-csv', formData);
-            console.log({data});
             setPhaseData(data.phases);
             dispatch(saveMapName(data.process_name));
             setExportedDataFrame(null);
@@ -398,6 +397,7 @@ const Home = () => {
     const clearData = () => {
         setPhaseData([]);
         dispatch(savePhaseData([]));
+        dispatch(saveMapName('Map name'));
     };
   
 
@@ -440,8 +440,8 @@ const Home = () => {
                         <button onClick={showGenerateSOPModal} className="btn">Generate Document</button>
                     </div>  
 
-                     <div className="col-md-3 mb-4">
-                        <button onClick={showExportedDataFrameModal} className="btn">Upload Exported data frame</button>
+                    <div className="col-md-3 mb-4">
+                        <button onClick={showExportedDataFrameModal} className="btn">Upload Exported Data Frame</button>
                     </div>        
                 </div>
             </div>
