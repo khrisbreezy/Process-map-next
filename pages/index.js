@@ -532,7 +532,7 @@ const Home = () => {
                                                         maxFiles={1}
                                                         name="files"
                                                         maxFileSize={'20MB'}
-                                                        acceptedFileTypes={'application/csv, text/csv, .csv'}
+                                                        acceptedFileTypes={'application/csv, text/csv, .csv, application/vnd.ms-excel'}
                                                         labelIdle='Drag & Drop your file or <span class="filepond--label-action">Browse</span>'
                                                     />
                                                 </div>

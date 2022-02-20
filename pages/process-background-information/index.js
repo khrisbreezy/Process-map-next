@@ -262,6 +262,8 @@ const ProcessBackgroundInformation = () => {
             return;
         }
         setUploading(true);
+        reset({});
+        dispatch(saveProcessData(null));  
         const formData = new FormData();
         formData.append('csv_file', exportedDataFrame[0]);
         
@@ -456,7 +458,7 @@ const ProcessBackgroundInformation = () => {
                                                             maxFiles={1}
                                                             name="files"
                                                             maxFileSize={'20MB'}
-                                                            acceptedFileTypes={'application/csv, text/csv, .csv'}
+                                                            acceptedFileTypes={'application/csv, text/csv, .csv, application/vnd.ms-excel'}
                                                             labelIdle='Drag & Drop your file or <span class="filepond--label-action">Browse</span>'
                                                         />
                                                     </div>
